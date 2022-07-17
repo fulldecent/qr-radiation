@@ -16,7 +16,7 @@ By running this program with various target PNG images, it created the below QR 
 
 2. Install dependencies:
    ```sh
-   npm install
+   yarn install
    ```
 
 ## Run

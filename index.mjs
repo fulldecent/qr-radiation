@@ -1,50 +1,37 @@
 import * as fs from "fs";
 import QRCode from "qrcode";
 import{ PNG } from "pngjs";
+import { Worker, parentPort } from "worker_threads";
+import { cpus } from 'os';
+const numCPUs = cpus().length;
 
 // Load target /////////////////////////////////////////////////////////////////
 const config = JSON.parse(fs.readFileSync("./config.json"));
-const targetData = fs.readFileSync("target.png");
-const target = PNG.sync.read(targetData);
+const target = PNG.sync.read(fs.readFileSync("target.png"));
 const targetGray255 = target.data.filter((_, index) => index%4===0); // 1st pixel channel
-
-// Create //////////////////////////////////////////////////////////////////////
-const options = {
-    errorCorrectionLevel: "L",
-    maskPattern: 1,
-    margin: 0,
-    scale: 1,
-    version: config.version,
-}
 var bestSuffix = config.suffix;
-var bestLoss = loss(bestSuffix);
 
-function loss(suffix) {
-    const qrcode = QRCode.create(config.prefix + suffix, options);
-    return targetGray255.reduce((previousValue, currentValue, currentIndex) => {
-        return previousValue + (qrcode.modules.data[currentIndex] === 1
-            ? currentValue
-            : 255 - currentValue)
-    }, 0);
-}
-
-function irradiate(string) {
-    for (let i=0; i<3; i++) {
-        const digit = String(Math.floor(Math.random() * 10));
-        const location = Math.floor(Math.random() * (string.length - 1));
-        string = string.substr(0, location) + digit + string.substr(location + 1);
-    }
-    return string;
-}
-
-while (true) {
-    const candidateSuffix = irradiate(bestSuffix);
-    if (candidateSuffix === bestSuffix) continue;
-    const candidateLoss = loss(candidateSuffix);
-    if (candidateLoss <= bestLoss) {
-        bestSuffix = candidateSuffix;
-        bestLoss = candidateLoss;
-        await QRCode.toFile("best.png", config.prefix + candidateSuffix, options);
-        console.log(candidateLoss, config.prefix + candidateSuffix);
+// Delegate to workers, synchronize each progress //////////////////////////////
+const workers = [];
+function startWorkers() {
+    for (let i=0; i<numCPUs; i++) {
+        const worker = new Worker("./worker.mjs");
+        worker.on("message", async message => {
+            bestSuffix = message.suffix;
+            console.log(message.loss, message.suffix);
+            await QRCode.toFile("best.png", config.prefix + message.suffix, config.options);    
+            killWorkers(workers);
+        });
+        workers.push(worker);
+        worker.postMessage({ targetGray255, prefix: config.prefix, suffix: bestSuffix, options: config.options });
     }
 }
+
+function killWorkers() {
+    for (let worker of workers) {
+        worker.terminate();
+    }
+    startWorkers();
+}
+
+startWorkers();
