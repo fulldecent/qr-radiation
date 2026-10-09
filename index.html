@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="qr-radiation-app" content="browser">
+    <title>QR Radiation</title>
+    <style>
+        body {
+            margin: 1rem;
+            max-width: 40rem;
+            font-family: system-ui, sans-serif;
+            line-height: 1.45;
+            color: #111;
+            background: #fff;
+        }
+        label {
+            display: block;
+            margin-top: 0.9rem;
+            font-weight: 600;
+        }
+        input, textarea, select, button {
+            font: inherit;
+        }
+        input, textarea, select {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 0.25rem;
+        }
+        textarea {
+            min-height: 7rem;
+        }
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        button, .actions a {
+            min-height: 44px;
+            padding: 0.4rem 0.8rem;
+            box-sizing: border-box;
+        }
+        img, canvas {
+            display: block;
+            width: min(100%, 20rem);
+            height: auto;
+            margin-top: 0.5rem;
+            image-rendering: pixelated;
+            background: #fff;
+            border: 1px solid #ccc;
+        }
+        #url, #log {
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+        }
+        #log {
+            max-height: 12rem;
+            overflow: auto;
+            background: #f6f6f6;
+            padding: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>QR Radiation</h1>
+    <p>An optimizer that makes your QR code look like a target graphic by manipulating your URL. The search runs in this browser. Nothing is uploaded.</p>
+    <p>Source and the Node program: <a href="https://github.com/fulldecent/qr-radiation">fulldecent/qr-radiation</a>.</p>
+
+    <form id="controls">
+        <label for="prefix">Prefix
+            <input id="prefix" name="prefix" autocomplete="off" required>
+        </label>
+        <label for="suffix">Suffix
+            <textarea id="suffix" name="suffix" autocomplete="off" required></textarea>
+        </label>
+        <label for="version">Version
+            <input id="version" name="version" type="number" min="1" max="40" step="1" required>
+        </label>
+        <label for="error-correction">Error correction
+            <select id="error-correction" name="error-correction">
+                <option>L</option>
+                <option>M</option>
+                <option>Q</option>
+                <option>H</option>
+            </select>
+        </label>
+        <label for="mask">Mask pattern
+            <select id="mask" name="mask">
+                <option>0</option>
+                <option>1</option>
+                <option>2</option>
+                <option>3</option>
+                <option>4</option>
+                <option>5</option>
+                <option>6</option>
+                <option>7</option>
+            </select>
+        </label>
+        <label for="target">Target image
+            <input id="target" name="target" type="file" accept="image/png,image/*">
+        </label>
+        <p id="requirement"></p>
+        <img id="target-preview" alt="Target graphic" hidden>
+        <div class="actions">
+            <button id="start" type="submit">Start</button>
+            <button id="stop" type="button" disabled>Stop</button>
+        </div>
+    </form>
+
+    <h2>Best URL</h2>
+    <p>Loss <strong id="loss">…</strong></p>
+    <p id="status">Loading.</p>
+    <canvas id="qr" width="41" height="41">QR code</canvas>
+    <p id="url"></p>
+    <div class="actions">
+        <a id="open" href="">Open URL</a>
+        <a id="download" href="" download="best.png">Download PNG</a>
+    </div>
+    <pre id="log"></pre>
+    <noscript>This page needs JavaScript to build the QR code.</noscript>
+    <script src="vendor/qrcode.js"></script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>

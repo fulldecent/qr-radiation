@@ -1,4 +1,10 @@
 {
+  "type": "module",
+  "packageManager": "yarn@1.22.22",
+  "scripts": {
+    "start": "node index.mjs",
+    "test": "node --test"
+  },
   "dependencies": {
     "pngjs": "^6.0.0",
     "qrcode": "^1.5.1"

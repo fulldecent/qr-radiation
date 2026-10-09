@@ -2,6 +2,17 @@
 
 An optimizer that makes your QR code look like a target graphic by manipulating your URL.
 
+The same search runs in the browser at <https://fulldecent.github.io/qr-radiation/>. It loads the sample prefix, suffix, and target image from this repository, then edits the suffix on your machine. Nothing is uploaded. Choose another PNG with the file control. The image has to be exactly N×N pixels, where N is `4 × version + 17` (version 6 is 41×41).
+
+## Testing
+
+Node.js 20 or newer.
+
+```sh
+yarn install
+yarn test
+```
+
 ## Examples
 
 By running this program with various target PNG images, it created the below QR codes. Each one points to https://phor.net website, try it.
@@ -12,7 +23,7 @@ By running this program with various target PNG images, it created the below QR 
 
 ## Installation
 
-1. Install Node JS 14+
+1. Install Node.js 20 or newer
 
 2. Install dependencies:
    ```sh
@@ -23,7 +34,7 @@ By running this program with various target PNG images, it created the below QR 
 
 1. Choose a base URL you would like to link to. Set that in **config.json** under `prefix`.
 
-2. Choose a QR version (pixel size) you want. Set that in **config.json** under `version`.
+2. Choose a QR version (pixel size) you want. Set that in **config.json** under `options.version`.
 
 3. Add or subtract random digits on `suffix` to be as many as you can fit without getting an error.
 
@@ -52,3 +63,4 @@ Please do not create issues, I am not interested in maintaining this. But if you
 - [Thonky](https://www.thonky.com/qr-code-tutorial/)—The best QR specification
 - [QR Decode](http://qrlogo.kaarposoft.dk/qrdecode.html)—Nice QR reader/debugger
 - [QRazyBox](https://merricx.github.io/qrazybox/)—Forensic decoding of damaged QR codes
+- [qrcode](https://github.com/soldair/node-qrcode)—MIT-licensed encoder. `vendor/qrcode.js` is that package's browser build, version 1.5.1, checked in so the page does not fetch it from a third party
