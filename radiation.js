@@ -30,46 +30,82 @@ export function irradiate(string, random = Math.random) {
     return next;
 }
 
-// One digit position, nine candidates. The work does not grow with how long the search has been running.
-export function searchPosition({ targetGray255, prefix, suffix, index, options, create, bestLoss }) {
-    const chars = suffix.split("");
-    const original = chars[index];
-    let bestSuffix = suffix;
-    let best = bestLoss;
-    let attempts = 0;
-    for (let digit = 0; digit <= 9; digit++) {
-        const next = String(digit);
-        if (next === original) continue;
-        chars[index] = next;
-        attempts++;
-        const candidateLoss = loss(targetGray255, create(prefix + chars.join(""), options).modules.data);
-        if (candidateLoss < best) {
-            best = candidateLoss;
-            bestSuffix = chars.join("");
-        }
-    }
-    if (bestSuffix === suffix) return { attempts, improved: false };
-    return { suffix: bestSuffix, loss: best, attempts, improved: true };
+export const moveKinds = ["single", "pair", "triple", "run", "path"];
+
+function randomDigit(current, random) {
+    let digit = Math.floor(random() * 10);
+    if (String(digit) === current) digit = (digit + 1 + Math.floor(random() * 9)) % 10;
+    return String(digit);
 }
 
-// A fixed number of random edits. This returns after `budget` draws even when none of them help.
-export function searchBudget({ targetGray255, prefix, suffix, options, create, random, budget, bestLoss }) {
+function writeDigit(chars, index, random) {
+    chars[index] = randomDigit(chars[index], random);
+}
+
+// Build a finished suffix. Nothing in the middle of a pair, run, or path is scored.
+export function combine(string, kind, random = Math.random) {
+    const chars = string.split("");
+    const length = chars.length;
+    if (length === 0) return string;
+    if (kind === "single") {
+        writeDigit(chars, Math.floor(random() * length), random);
+    } else if (kind === "pair" || kind === "triple") {
+        const count = kind === "pair" ? 2 : 3;
+        const used = new Set();
+        for (let i = 0; i < count; i++) {
+            let index = Math.floor(random() * length);
+            let guard = 0;
+            while (used.has(index) && used.size < length && guard < 8) {
+                index = Math.floor(random() * length);
+                guard++;
+            }
+            used.add(index);
+            writeDigit(chars, index, random);
+        }
+    } else if (kind === "run") {
+        const run = 2 + Math.floor(random() * 3);
+        const start = Math.floor(random() * length);
+        for (let i = 0; i < run && i < length; i++) writeDigit(chars, (start + i) % length, random);
+    } else if (kind === "path") {
+        const steps = 2 + Math.floor(random() * 5);
+        for (let i = 0; i < steps; i++) writeDigit(chars, Math.floor(random() * length), random);
+    } else {
+        throw new Error(`Unknown move ${kind}.`);
+    }
+    if (chars.join("") === string) {
+        writeDigit(chars, Math.floor(random() * length), random);
+    }
+    return chars.join("");
+}
+
+// Score finished combinations against the current best. Intermediate edits are not scored.
+export function searchMoves({ targetGray255, prefix, suffix, options, create, random, move, budget, bestLoss }) {
+    const draw = random || Math.random;
     let bestSuffix = suffix;
     let best = bestLoss;
     let attempts = 0;
-    const draw = random || Math.random;
+    let candidateSuffix = suffix;
+    let candidateLoss = bestLoss;
     for (let i = 0; i < budget; i++) {
-        const candidateSuffix = irradiate(suffix, draw);
+        const next = combine(suffix, move, draw);
         attempts++;
-        if (candidateSuffix === suffix) continue;
-        const candidateLoss = loss(targetGray255, create(prefix + candidateSuffix, options).modules.data);
+        if (next === suffix) continue;
+        candidateSuffix = next;
+        candidateLoss = loss(targetGray255, create(prefix + next, options).modules.data);
         if (candidateLoss < best) {
             best = candidateLoss;
-            bestSuffix = candidateSuffix;
+            bestSuffix = next;
         }
     }
-    if (bestSuffix === suffix) return { attempts, improved: false };
-    return { suffix: bestSuffix, loss: best, attempts, improved: true };
+    return {
+        attempts,
+        improved: bestSuffix !== suffix,
+        suffix: bestSuffix,
+        loss: best,
+        candidateSuffix,
+        candidateLoss,
+        move
+    };
 }
 
 // Keep drawing suffixes until one scores as well as, or better than, the input.

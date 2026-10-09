@@ -4,7 +4,7 @@ import test from "node:test";
 
 test("the page includes the browser controls and local scripts", () => {
     const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-    for (const id of ["prefix", "suffix", "version", "error-correction", "mask", "target", "start", "stop", "loss", "qr", "url"]) {
+    for (const id of ["prefix", "suffix", "version", "error-correction", "mask", "target", "start", "stop", "loss", "qr", "attempt", "attempt-loss", "url"]) {
         assert.match(html, new RegExp(`id="${id}"`));
     }
     assert.match(html, /src="vendor\/qrcode\.js"/);

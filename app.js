@@ -1,4 +1,4 @@
-import { loss, moduleCount } from "./radiation.js";
+import { loss, moduleCount, moveKinds } from "./radiation.js";
 
 const form = document.querySelector("#controls");
 const prefixInput = document.querySelector("#prefix");
@@ -17,9 +17,19 @@ const openLink = document.querySelector("#open");
 const statusOutput = document.querySelector("#status");
 const logOutput = document.querySelector("#log");
 const canvas = document.querySelector("#qr");
+const attemptCanvas = document.querySelector("#attempt");
+const attemptLoss = document.querySelector("#attempt-loss");
+const attemptMove = document.querySelector("#attempt-move");
 const downloadLink = document.querySelector("#download");
 
-const radiateBudget = 24;
+const moveBudget = 8;
+const moveLabel = {
+    single: "one digit",
+    pair: "two digits",
+    triple: "three digits",
+    run: "a run of digits",
+    path: "a path of edits"
+};
 
 let targetGray255 = null;
 let targetWidth = 0;
@@ -30,6 +40,8 @@ let nextIndex = 0;
 let bestLoss = Infinity;
 let attempts = 0;
 let statusStamp = 0;
+let attemptPending = null;
+let attemptDrawn = 0;
 let running = false;
 
 function readOptions() {
@@ -64,11 +76,11 @@ function grayFromImage(image) {
     return gray;
 }
 
-function drawQR(modulesData, size) {
+function drawModules(targetCanvas, modulesData, size) {
     const scale = 8;
-    canvas.width = size * scale;
-    canvas.height = size * scale;
-    const context = canvas.getContext("2d");
+    targetCanvas.width = size * scale;
+    targetCanvas.height = size * scale;
+    const context = targetCanvas.getContext("2d");
     const sample = document.createElement("canvas");
     sample.width = size;
     sample.height = size;
@@ -83,8 +95,33 @@ function drawQR(modulesData, size) {
     }
     sampleContext.putImageData(image, 0, 0);
     context.imageSmoothingEnabled = false;
-    context.drawImage(sample, 0, 0, canvas.width, canvas.height);
+    context.drawImage(sample, 0, 0, targetCanvas.width, targetCanvas.height);
+}
+
+function drawQR(modulesData, size) {
+    drawModules(canvas, modulesData, size);
     downloadLink.href = canvas.toDataURL("image/png");
+}
+
+function noteAttempt(data) {
+    attemptPending = data;
+    const now = performance.now();
+    if (now - attemptDrawn < 100) return;
+    attemptDrawn = now;
+    paintAttempt();
+}
+
+function paintAttempt() {
+    const data = attemptPending;
+    if (!data || !data.candidateSuffix) return;
+    try {
+        const qr = QRCode.create(prefixInput.value + data.candidateSuffix, readOptions());
+        drawModules(attemptCanvas, qr.modules.data, qr.modules.size);
+        attemptLoss.textContent = String(data.candidateLoss);
+        attemptMove.textContent = moveLabel[data.move] || data.move;
+    } catch (error) {
+        attemptMove.textContent = error.message;
+    }
 }
 
 function renderQR() {
@@ -140,19 +177,16 @@ function assign(worker) {
         setStatus("The suffix is empty.");
         return;
     }
-    const cycle = suffix.length + 1;
-    const slot = nextIndex % cycle;
+    const move = moveKinds[nextIndex % moveKinds.length];
     nextIndex++;
-    const message = {
+    worker.postMessage({
+        kind: "moves",
+        move,
+        budget: moveBudget,
         suffix,
         bestLoss,
         suffixGen
-    };
-    if (slot === suffix.length) {
-        worker.postMessage({ ...message, kind: "radiate", budget: radiateBudget });
-        return;
-    }
-    worker.postMessage({ ...message, kind: "position", index: slot });
+    });
 }
 
 function onWorker(worker, event) {
@@ -168,19 +202,24 @@ function onWorker(worker, event) {
         return;
     }
     attempts += data.attempts || 0;
+    noteAttempt(data);
     const improved = data.improved && data.loss < bestLoss;
     if (improved) {
         bestLoss = data.loss;
         suffixInput.value = data.suffix;
         suffixGen += 1;
-        const line = `${data.loss} ${data.suffix}`;
+        const line = `${data.loss} ${data.move} ${data.suffix}`;
         logOutput.textContent = `${line}\n${logOutput.textContent}`.split("\n").slice(0, 20).join("\n");
         renderQR();
     }
     const now = performance.now();
     if (improved || now - statusStamp > 150) {
         statusStamp = now;
-        setStatus(`Tried ${attempts.toLocaleString("en-US")} codes.`);
+        attemptDrawn = now;
+        paintAttempt();
+        const shown = attemptPending || data;
+        const latest = shown.candidateLoss === undefined ? "" : ` Latest ${shown.candidateLoss}, ${moveLabel[shown.move] || shown.move}.`;
+        setStatus(`Tried ${attempts.toLocaleString("en-US")} codes.${latest} Best ${bestLoss}.`);
     }
     if (running) assign(worker);
 }

@@ -1,4 +1,4 @@
-import { searchBudget, searchPosition } from "./radiation.js";
+import { searchMoves } from "./radiation.js";
 
 let createPromise;
 let create;
@@ -44,8 +44,6 @@ async function handle(message) {
         suffix: message.suffix,
         bestLoss: message.bestLoss
     };
-    const result = message.kind === "radiate"
-        ? searchBudget({ ...common, budget: message.budget })
-        : searchPosition({ ...common, index: message.index });
+    const result = searchMoves({ ...common, move: message.move, budget: message.budget });
     self.postMessage({ ...result, suffixGen: message.suffixGen });
 }

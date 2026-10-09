@@ -3,10 +3,10 @@ import QRCode from "qrcode";
 import { PNG } from "pngjs";
 import { Worker } from "worker_threads";
 import { cpus } from "os";
-import { loss, moduleCount } from "./radiation.js";
+import { loss, moduleCount, moveKinds } from "./radiation.js";
 
 const numCPUs = cpus().length;
-const radiateBudget = 24;
+const moveBudget = 8;
 
 const config = JSON.parse(fs.readFileSync("./config.json"));
 const target = PNG.sync.read(fs.readFileSync("target.png"));
@@ -48,19 +48,16 @@ for (let i = 0; i < numCPUs; i++) {
 }
 
 function assign(worker) {
-    const cycle = bestSuffix.length + 1;
-    const slot = nextIndex % cycle;
+    const move = moveKinds[nextIndex % moveKinds.length];
     nextIndex++;
-    const message = {
+    worker.postMessage({
+        kind: "moves",
+        move,
+        budget: moveBudget,
         suffix: bestSuffix,
         bestLoss,
         suffixGen
-    };
-    if (slot === bestSuffix.length) {
-        worker.postMessage({ ...message, kind: "radiate", budget: radiateBudget });
-        return;
-    }
-    worker.postMessage({ ...message, kind: "position", index: slot });
+    });
 }
 
 function onWorker(worker, message) {

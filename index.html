@@ -83,7 +83,7 @@
             <div class="col-12 lg:col-6 order-1 lg:order-2">
                 <section class="card">
                     <div class="card-body">
-                        <h2 class="h4 card-title">Best URL</h2>
+                        <h2 class="h4 card-title">Search</h2>
                         <div class="d-flex flex-wrap gap-2 mb-3">
                             <button id="start" class="btn-solid theme-primary" type="button">Start</button>
                             <button id="stop" class="btn-outline theme-secondary" type="button" disabled>Stop</button>
@@ -91,8 +91,19 @@
                         <p id="status" role="status">Loading.</p>
                         <p id="requirement" class="form-text"></p>
                         <img id="target-preview" class="qr-pixel img-thumbnail d-none mb-3" alt="Target graphic">
-                        <p>Loss <strong id="loss">…</strong></p>
-                        <canvas id="qr" class="qr-pixel border mb-3" width="41" height="41">QR code</canvas>
+                        <div class="row g-3">
+                            <div class="col-12 sm:col-6">
+                                <h3 class="h6">Latest try</h3>
+                                <p>Loss <strong id="attempt-loss">…</strong></p>
+                                <p id="attempt-move" class="form-text"></p>
+                                <canvas id="attempt" class="qr-pixel border" width="41" height="41">Latest QR code</canvas>
+                            </div>
+                            <div class="col-12 sm:col-6">
+                                <h3 class="h6">Best URL</h3>
+                                <p>Loss <strong id="loss">…</strong></p>
+                                <canvas id="qr" class="qr-pixel border" width="41" height="41">Best QR code</canvas>
+                            </div>
+                        </div>
                         <p id="url" class="font-monospace"></p>
                         <div class="d-flex flex-wrap gap-2">
                             <a id="open" class="btn-outline theme-primary" href="">Open URL</a>

@@ -1,6 +1,6 @@
 import QRCode from "qrcode";
 import { parentPort } from "worker_threads";
-import { searchBudget, searchPosition } from "./radiation.js";
+import { searchMoves } from "./radiation.js";
 
 let state;
 
@@ -21,9 +21,7 @@ parentPort.on("message", message => {
             suffix: message.suffix,
             bestLoss: message.bestLoss
         };
-        const result = message.kind === "radiate"
-            ? searchBudget({ ...common, budget: message.budget })
-            : searchPosition({ ...common, index: message.index });
+        const result = searchMoves({ ...common, move: message.move, budget: message.budget });
         parentPort.postMessage({ ...result, suffixGen: message.suffixGen });
     } catch (error) {
         parentPort.postMessage({ error: error.message, suffixGen: message.suffixGen });

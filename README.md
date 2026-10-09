@@ -2,7 +2,7 @@
 
 An optimizer that makes your QR code look like a target graphic by manipulating your URL.
 
-The same search runs in the browser at <https://fulldecent.github.io/qr-radiation/>. It loads the sample prefix, suffix, and target image from this repository, then edits the suffix on your machine. Nothing is uploaded. Each step tries the ten digits in one position, or a fixed handful of random edits, so a later step does the same amount of work as an earlier one. Choose another PNG with the file control. The image has to be exactly N×N pixels, where N is `4 × version + 17` (version 6 is 41×41).
+The same search runs in the browser at <https://fulldecent.github.io/qr-radiation/>. It loads the sample prefix, suffix, and target image from this repository, then edits the suffix on your machine. Nothing is uploaded. Each step builds one finished combination of suffix edits — one digit, a pair, a triple, a short run, or a path of several edits — and scores that string once against the current best. The latest try is drawn even when it does not win. Choose another PNG with the file control. The image has to be exactly N×N pixels, where N is `4 × version + 17` (version 6 is 41×41).
 
 ## Testing
 
