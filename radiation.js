@@ -30,6 +30,48 @@ export function irradiate(string, random = Math.random) {
     return next;
 }
 
+// One digit position, nine candidates. The work does not grow with how long the search has been running.
+export function searchPosition({ targetGray255, prefix, suffix, index, options, create, bestLoss }) {
+    const chars = suffix.split("");
+    const original = chars[index];
+    let bestSuffix = suffix;
+    let best = bestLoss;
+    let attempts = 0;
+    for (let digit = 0; digit <= 9; digit++) {
+        const next = String(digit);
+        if (next === original) continue;
+        chars[index] = next;
+        attempts++;
+        const candidateLoss = loss(targetGray255, create(prefix + chars.join(""), options).modules.data);
+        if (candidateLoss < best) {
+            best = candidateLoss;
+            bestSuffix = chars.join("");
+        }
+    }
+    if (bestSuffix === suffix) return { attempts, improved: false };
+    return { suffix: bestSuffix, loss: best, attempts, improved: true };
+}
+
+// A fixed number of random edits. This returns after `budget` draws even when none of them help.
+export function searchBudget({ targetGray255, prefix, suffix, options, create, random, budget, bestLoss }) {
+    let bestSuffix = suffix;
+    let best = bestLoss;
+    let attempts = 0;
+    const draw = random || Math.random;
+    for (let i = 0; i < budget; i++) {
+        const candidateSuffix = irradiate(suffix, draw);
+        attempts++;
+        if (candidateSuffix === suffix) continue;
+        const candidateLoss = loss(targetGray255, create(prefix + candidateSuffix, options).modules.data);
+        if (candidateLoss < best) {
+            best = candidateLoss;
+            bestSuffix = candidateSuffix;
+        }
+    }
+    if (bestSuffix === suffix) return { attempts, improved: false };
+    return { suffix: bestSuffix, loss: best, attempts, improved: true };
+}
+
 // Keep drawing suffixes until one scores as well as, or better than, the input.
 export function searchUntilImproved({ targetGray255, prefix, suffix, options, create, random }) {
     const bestLoss = loss(targetGray255, create(prefix + suffix, options).modules.data);

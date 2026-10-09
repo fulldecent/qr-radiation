@@ -1,6 +1,8 @@
-import { searchUntilImproved } from "./radiation.js";
+import { searchBudget, searchPosition } from "./radiation.js";
 
 let createPromise;
+let create;
+let state;
 
 function loadCreate() {
     if (!createPromise) {
@@ -16,12 +18,34 @@ function loadCreate() {
     return createPromise;
 }
 
-self.onmessage = async event => {
-    try {
-        const create = await loadCreate();
-        const { targetGray255, prefix, suffix, options } = event.data;
-        self.postMessage(searchUntilImproved({ targetGray255, prefix, suffix, options, create }));
-    } catch (error) {
-        self.postMessage({ error: error && error.message ? error.message : String(error) });
-    }
+// Handle one message at a time so a position search cannot start before init.
+let pending = Promise.resolve();
+
+self.onmessage = event => {
+    pending = pending.then(() => handle(event.data)).catch(error => {
+        self.postMessage({ error: error && error.message ? error.message : String(error), suffixGen: event.data && event.data.suffixGen });
+    });
 };
+
+async function handle(message) {
+    if (!create) create = await loadCreate();
+    if (message.kind === "init") {
+        state = {
+            targetGray255: message.targetGray255,
+            prefix: message.prefix,
+            options: message.options
+        };
+        return;
+    }
+    if (!state) throw new Error("The worker was not initialized.");
+    const common = {
+        ...state,
+        create,
+        suffix: message.suffix,
+        bestLoss: message.bestLoss
+    };
+    const result = message.kind === "radiate"
+        ? searchBudget({ ...common, budget: message.budget })
+        : searchPosition({ ...common, index: message.index });
+    self.postMessage({ ...result, suffixGen: message.suffixGen });
+}

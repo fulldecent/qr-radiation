@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
 import { PNG } from "pngjs";
-import { irradiate, loss, moduleCount, searchUntilImproved } from "../radiation.js";
+import { irradiate, loss, moduleCount, searchBudget, searchPosition, searchUntilImproved } from "../radiation.js";
 
 const require = createRequire(import.meta.url);
 const QRCode = require("qrcode");
@@ -58,6 +58,70 @@ test("the installed encoder and the vendored browser build draw the same modules
     const nodeModules = QRCode.create(text, options).modules.data;
     assert.equal(browserModules.length, 41 * 41);
     assert.deepEqual(Array.from(browserModules), Array.from(nodeModules));
+});
+
+test("a digit position costs at most nine encodings", () => {
+    let creates = 0;
+    const result = searchPosition({
+        targetGray255: [0, 0, 0, 0],
+        prefix: "",
+        suffix: "0000",
+        index: 0,
+        options: {},
+        bestLoss: 1000,
+        create(text) {
+            creates++;
+            const good = text.startsWith("7");
+            return { modules: { data: good ? [1, 1, 1, 1] : [0, 0, 0, 0] } };
+        }
+    });
+    assert.equal(creates, 9);
+    assert.deepEqual(result, { suffix: "7000", loss: 0, attempts: 9, improved: true });
+});
+
+test("later positions do not inspect more candidates than the first", () => {
+    const config = JSON.parse(readFileSync(new URL("../config.json", import.meta.url)));
+    const counts = [];
+    for (let index = 0; index < 40; index++) {
+        let creates = 0;
+        searchPosition({
+            targetGray255: new Uint8Array(41 * 41),
+            prefix: config.prefix,
+            suffix: config.suffix,
+            index,
+            options: config.options,
+            bestLoss: 0,
+            create(text, options) {
+                creates++;
+                return QRCode.create(text, options);
+            }
+        });
+        counts.push(creates);
+    }
+    assert.equal(Math.max(...counts), 9);
+    assert.equal(Math.min(...counts), 9);
+});
+
+test("a radiate batch stays inside its budget", () => {
+    for (let seed = 1; seed <= 30; seed++) {
+        let creates = 0;
+        const result = searchBudget({
+            targetGray255: [255],
+            prefix: "",
+            suffix: "0000",
+            options: {},
+            budget: 5,
+            bestLoss: 0,
+            random: mulberry32(seed),
+            create() {
+                creates++;
+                return { modules: { data: [1] } };
+            }
+        });
+        assert.equal(creates <= 5, true);
+        assert.equal(result.improved, false);
+        assert.equal(result.attempts, 5);
+    }
 });
 
 function mulberry32(seed) {

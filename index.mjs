@@ -6,8 +6,8 @@ import { cpus } from "os";
 import { loss, moduleCount } from "./radiation.js";
 
 const numCPUs = cpus().length;
+const radiateBudget = 24;
 
-// Load target /////////////////////////////////////////////////////////////////
 const config = JSON.parse(fs.readFileSync("./config.json"));
 const target = PNG.sync.read(fs.readFileSync("target.png"));
 const targetGray255 = target.data.filter((_, index) => index % 4 === 0);
@@ -15,31 +15,66 @@ const side = moduleCount(config.options.version);
 if (target.width !== side || target.height !== side) {
     throw new Error(`target.png is ${target.width}×${target.height}. Version ${config.options.version} needs ${side}×${side}.`);
 }
-loss(targetGray255, QRCode.create(config.prefix + config.suffix, config.options).modules.data);
-var bestSuffix = config.suffix;
 
-// Delegate to workers, synchronize each progress //////////////////////////////
+let bestSuffix = config.suffix;
+let bestLoss = loss(targetGray255, QRCode.create(config.prefix + bestSuffix, config.options).modules.data);
+let suffixGen = 1;
+let nextIndex = 0;
+let saveChain = Promise.resolve();
+
+function remember(suffix) {
+    const text = config.prefix + suffix;
+    const generation = suffixGen;
+    saveChain = saveChain.then(async () => {
+        if (generation !== suffixGen) return;
+        await QRCode.toFile("best.png", text, config.options);
+    }).catch(error => {
+        console.error(error.message);
+    });
+}
+
 const workers = [];
-function startWorkers() {
-    for (let i = 0; i < numCPUs; i++) {
-        const worker = new Worker(new URL("./worker.mjs", import.meta.url));
-        worker.on("message", async message => {
-            bestSuffix = message.suffix;
-            console.log(message.loss, message.suffix);
-            await QRCode.toFile("best.png", config.prefix + message.suffix, config.options);
-            killWorkers(workers);
-        });
-        workers.push(worker);
-        worker.postMessage({ targetGray255, prefix: config.prefix, suffix: bestSuffix, options: config.options });
-    }
+for (let i = 0; i < numCPUs; i++) {
+    const worker = new Worker(new URL("./worker.mjs", import.meta.url));
+    worker.on("message", message => onWorker(worker, message));
+    worker.postMessage({
+        kind: "init",
+        targetGray255,
+        prefix: config.prefix,
+        options: config.options
+    });
+    workers.push(worker);
+    assign(worker);
 }
 
-function killWorkers() {
-    for (let worker of workers) {
-        worker.terminate();
+function assign(worker) {
+    const cycle = bestSuffix.length + 1;
+    const slot = nextIndex % cycle;
+    nextIndex++;
+    const message = {
+        suffix: bestSuffix,
+        bestLoss,
+        suffixGen
+    };
+    if (slot === bestSuffix.length) {
+        worker.postMessage({ ...message, kind: "radiate", budget: radiateBudget });
+        return;
     }
-    workers.length = 0;
-    startWorkers();
+    worker.postMessage({ ...message, kind: "position", index: slot });
 }
 
-startWorkers();
+function onWorker(worker, message) {
+    if (message.error) throw new Error(message.error);
+    if (message.suffixGen !== suffixGen) {
+        assign(worker);
+        return;
+    }
+    if (message.improved && message.loss < bestLoss) {
+        bestLoss = message.loss;
+        bestSuffix = message.suffix;
+        suffixGen++;
+        console.log(bestLoss, bestSuffix);
+        remember(bestSuffix);
+    }
+    assign(worker);
+}

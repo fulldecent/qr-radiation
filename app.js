@@ -19,11 +19,17 @@ const logOutput = document.querySelector("#log");
 const canvas = document.querySelector("#qr");
 const downloadLink = document.querySelector("#download");
 
+const radiateBudget = 24;
+
 let targetGray255 = null;
 let targetWidth = 0;
 let targetHeight = 0;
 let workers = [];
-let generation = 0;
+let suffixGen = 0;
+let nextIndex = 0;
+let bestLoss = Infinity;
+let attempts = 0;
+let statusStamp = 0;
 let running = false;
 
 function readOptions() {
@@ -116,8 +122,8 @@ function renderQR() {
 }
 
 function stopWorkers() {
-    generation += 1;
     running = false;
+    suffixGen += 1;
     for (const worker of workers) {
         worker.terminate();
     }
@@ -127,49 +133,90 @@ function stopWorkers() {
     renderQR();
 }
 
+function assign(worker) {
+    const suffix = suffixInput.value;
+    if (!suffix.length) {
+        stopWorkers();
+        setStatus("The suffix is empty.");
+        return;
+    }
+    const cycle = suffix.length + 1;
+    const slot = nextIndex % cycle;
+    nextIndex++;
+    const message = {
+        suffix,
+        bestLoss,
+        suffixGen
+    };
+    if (slot === suffix.length) {
+        worker.postMessage({ ...message, kind: "radiate", budget: radiateBudget });
+        return;
+    }
+    worker.postMessage({ ...message, kind: "position", index: slot });
+}
+
+function onWorker(worker, event) {
+    if (!running) return;
+    const data = event.data;
+    if (data.error) {
+        stopWorkers();
+        setStatus(data.error);
+        return;
+    }
+    if (data.suffixGen !== suffixGen) {
+        assign(worker);
+        return;
+    }
+    attempts += data.attempts || 0;
+    const improved = data.improved && data.loss < bestLoss;
+    if (improved) {
+        bestLoss = data.loss;
+        suffixInput.value = data.suffix;
+        suffixGen += 1;
+        const line = `${data.loss} ${data.suffix}`;
+        logOutput.textContent = `${line}\n${logOutput.textContent}`.split("\n").slice(0, 20).join("\n");
+        renderQR();
+    }
+    const now = performance.now();
+    if (improved || now - statusStamp > 150) {
+        statusStamp = now;
+        setStatus(`Tried ${attempts.toLocaleString("en-US")} codes.`);
+    }
+    if (running) assign(worker);
+}
+
 function startWorkers() {
-    const options = readOptions();
     const rendered = renderQR();
     if (!rendered.ok) {
         setStatus(rendered.reason);
         return;
     }
-    stopWorkers();
+    bestLoss = rendered.score;
+    attempts = 0;
+    nextIndex = 0;
+    suffixGen += 1;
     running = true;
     startButton.disabled = true;
     startButton.textContent = "Searching…";
     stopButton.disabled = false;
-    const gen = generation;
+    setStatus("Searching.");
     const count = navigator.hardwareConcurrency || 4;
-    setStatus(`Searching with ${count} workers.`);
-    const payload = {
-        targetGray255,
-        prefix: prefixInput.value,
-        suffix: suffixInput.value,
-        options
-    };
+    for (const worker of workers) worker.terminate();
+    workers = [];
+    const target = targetGray255;
+    const prefix = prefixInput.value;
+    const options = readOptions();
     for (let i = 0; i < count; i++) {
         const worker = new Worker(new URL("./browser-worker.js", import.meta.url), { type: "module" });
-        worker.onmessage = event => {
-            if (gen !== generation) return;
-            if (event.data.error) {
-                stopWorkers();
-                setStatus(event.data.error);
-                return;
-            }
-            suffixInput.value = event.data.suffix;
-            const line = `${event.data.loss} ${event.data.suffix}`;
-            logOutput.textContent = `${line}\n${logOutput.textContent}`.split("\n").slice(0, 20).join("\n");
-            startWorkers();
-        };
+        worker.onmessage = event => onWorker(worker, event);
         worker.onerror = event => {
-            if (gen !== generation) return;
-            const message = event.message || "The search stopped.";
+            if (!running) return;
             stopWorkers();
-            setStatus(message);
+            setStatus(event.message || "The search stopped.");
         };
+        worker.postMessage({ kind: "init", targetGray255: target, prefix, options });
         workers.push(worker);
-        worker.postMessage(payload);
+        assign(worker);
     }
 }
 
