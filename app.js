@@ -43,6 +43,12 @@ let statusStamp = 0;
 let attemptPending = null;
 let attemptDrawn = 0;
 let running = false;
+let optimizerSuffix = null;
+
+function writeSuffix(value) {
+    optimizerSuffix = value;
+    suffixInput.value = value;
+}
 
 function readOptions() {
     return {
@@ -113,14 +119,14 @@ function noteAttempt(data) {
 
 function paintAttempt() {
     const data = attemptPending;
-    if (!data || !data.candidateSuffix) return;
+    if (!data || !data.candidateSuffix || !attemptCanvas) return;
     try {
         const qr = QRCode.create(prefixInput.value + data.candidateSuffix, readOptions());
         drawModules(attemptCanvas, qr.modules.data, qr.modules.size);
-        attemptLoss.textContent = String(data.candidateLoss);
-        attemptMove.textContent = moveLabel[data.move] || data.move;
+        if (attemptLoss) attemptLoss.textContent = String(data.candidateLoss);
+        if (attemptMove) attemptMove.textContent = moveLabel[data.move] || data.move;
     } catch (error) {
-        attemptMove.textContent = error.message;
+        if (attemptMove) attemptMove.textContent = error.message;
     }
 }
 
@@ -191,37 +197,39 @@ function assign(worker) {
 
 function onWorker(worker, event) {
     if (!running) return;
-    const data = event.data;
-    if (data.error) {
-        stopWorkers();
-        setStatus(data.error);
-        return;
+    try {
+        const data = event.data;
+        if (!data || data.error) {
+            stopWorkers();
+            setStatus((data && data.error) || "The search stopped.");
+            return;
+        }
+        if (data.suffixGen !== suffixGen) return;
+        attempts += data.attempts || 0;
+        noteAttempt(data);
+        const improved = data.improved && data.loss < bestLoss;
+        if (improved) {
+            bestLoss = data.loss;
+            writeSuffix(data.suffix);
+            suffixGen += 1;
+            const line = `${data.loss} ${data.move} ${data.suffix}`;
+            logOutput.textContent = `${line}\n${logOutput.textContent}`.split("\n").slice(0, 20).join("\n");
+            renderQR();
+        }
+        const now = performance.now();
+        if (improved || now - statusStamp > 150) {
+            statusStamp = now;
+            attemptDrawn = now;
+            paintAttempt();
+            const shown = attemptPending || data;
+            const latest = shown.candidateLoss === undefined ? "" : ` Latest ${shown.candidateLoss}, ${moveLabel[shown.move] || shown.move}.`;
+            setStatus(`Tried ${attempts.toLocaleString("en-US")} codes.${latest} Best ${bestLoss}.`);
+        }
+    } catch (error) {
+        setStatus(error.message);
+    } finally {
+        if (running) assign(worker);
     }
-    if (data.suffixGen !== suffixGen) {
-        assign(worker);
-        return;
-    }
-    attempts += data.attempts || 0;
-    noteAttempt(data);
-    const improved = data.improved && data.loss < bestLoss;
-    if (improved) {
-        bestLoss = data.loss;
-        suffixInput.value = data.suffix;
-        suffixGen += 1;
-        const line = `${data.loss} ${data.move} ${data.suffix}`;
-        logOutput.textContent = `${line}\n${logOutput.textContent}`.split("\n").slice(0, 20).join("\n");
-        renderQR();
-    }
-    const now = performance.now();
-    if (improved || now - statusStamp > 150) {
-        statusStamp = now;
-        attemptDrawn = now;
-        paintAttempt();
-        const shown = attemptPending || data;
-        const latest = shown.candidateLoss === undefined ? "" : ` Latest ${shown.candidateLoss}, ${moveLabel[shown.move] || shown.move}.`;
-        setStatus(`Tried ${attempts.toLocaleString("en-US")} codes.${latest} Best ${bestLoss}.`);
-    }
-    if (running) assign(worker);
 }
 
 function startWorkers() {
@@ -293,13 +301,22 @@ stopButton.addEventListener("click", () => {
     setStatus("Stopped.");
 });
 
-for (const input of [prefixInput, suffixInput, versionInput, errorCorrectionInput, maskInput]) {
+for (const input of [prefixInput, versionInput, errorCorrectionInput, maskInput]) {
     input.addEventListener("input", () => {
         if (running) stopWorkers();
         renderQR();
         if (!running) setStatus("Ready.");
     });
 }
+
+// Setting the suffix from a new best can dispatch input. Ignore that echo.
+suffixInput.addEventListener("input", () => {
+    if (suffixInput.value === optimizerSuffix) return;
+    optimizerSuffix = null;
+    if (running) stopWorkers();
+    renderQR();
+    if (!running) setStatus("Ready.");
+});
 
 targetInput.addEventListener("change", async () => {
     const file = targetInput.files && targetInput.files[0];
@@ -322,7 +339,7 @@ try {
     }
     const config = await response.json();
     prefixInput.value = config.prefix;
-    suffixInput.value = config.suffix;
+    writeSuffix(config.suffix);
     versionInput.value = String(config.options.version);
     errorCorrectionInput.value = config.options.errorCorrectionLevel;
     maskInput.value = String(config.options.maskPattern);
