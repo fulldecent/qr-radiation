@@ -123,6 +123,7 @@ function stopWorkers() {
     }
     workers = [];
     stopButton.disabled = true;
+    startButton.textContent = "Start";
     renderQR();
 }
 
@@ -136,6 +137,7 @@ function startWorkers() {
     stopWorkers();
     running = true;
     startButton.disabled = true;
+    startButton.textContent = "Searching…";
     stopButton.disabled = false;
     const gen = generation;
     const count = navigator.hardwareConcurrency || 4;
@@ -150,6 +152,11 @@ function startWorkers() {
         const worker = new Worker(new URL("./browser-worker.js", import.meta.url), { type: "module" });
         worker.onmessage = event => {
             if (gen !== generation) return;
+            if (event.data.error) {
+                stopWorkers();
+                setStatus(event.data.error);
+                return;
+            }
             suffixInput.value = event.data.suffix;
             const line = `${event.data.loss} ${event.data.suffix}`;
             logOutput.textContent = `${line}\n${logOutput.textContent}`.split("\n").slice(0, 20).join("\n");
@@ -174,7 +181,7 @@ function useImage(image) {
     preview.height = image.naturalHeight;
     preview.getContext("2d").drawImage(image, 0, 0);
     targetPreview.src = preview.toDataURL("image/png");
-    targetPreview.hidden = false;
+    targetPreview.classList.remove("d-none");
     targetGray255 = grayFromImage(image);
     const rendered = renderQR();
     if (!running) {
@@ -191,8 +198,7 @@ function loadImage(url) {
     });
 }
 
-form.addEventListener("submit", event => {
-    event.preventDefault();
+startButton.addEventListener("click", () => {
     startWorkers();
 });
 

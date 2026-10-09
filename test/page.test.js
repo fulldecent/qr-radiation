@@ -10,6 +10,9 @@ test("the page includes the browser controls and local scripts", () => {
     assert.match(html, /src="vendor\/qrcode\.js"/);
     assert.match(html, /src="app\.js"/);
     assert.match(html, /name="qr-radiation-app"/);
+    assert.match(html, /bootstrap@6\.0\.0-alpha\.1\/dist\/css\/bootstrap\.min\.css/);
+    assert.match(html, /id="start"[^>]*type="button"/);
+    assert.match(html, /lg:col-6 order-1 lg:order-2/);
     assert.equal(html.includes("{{"), false);
     readFileSync(new URL("../app.js", import.meta.url));
     readFileSync(new URL("../browser-worker.js", import.meta.url));

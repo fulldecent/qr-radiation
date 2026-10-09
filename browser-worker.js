@@ -17,7 +17,11 @@ function loadCreate() {
 }
 
 self.onmessage = async event => {
-    const create = await loadCreate();
-    const { targetGray255, prefix, suffix, options } = event.data;
-    self.postMessage(searchUntilImproved({ targetGray255, prefix, suffix, options, create }));
+    try {
+        const create = await loadCreate();
+        const { targetGray255, prefix, suffix, options } = event.data;
+        self.postMessage(searchUntilImproved({ targetGray255, prefix, suffix, options, create }));
+    } catch (error) {
+        self.postMessage({ error: error && error.message ? error.message : String(error) });
+    }
 };
