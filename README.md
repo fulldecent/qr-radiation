@@ -44,7 +44,7 @@ By running this program with various target PNG images, it created the below QR 
 5. Run the command
 
    ```sh
-   node index.mjs
+   yarn node index.mjs
    ```
 
 Now you will see various improvements to `suffix` spit out on the console along with a loss function that goes down. This loss function compares **target.png** versus the proposed URL.
@@ -67,4 +67,4 @@ Please do not create issues, I am not interested in maintaining this. But if you
 - [QRazyBox](https://merricx.github.io/qrazybox/)—Forensic decoding of damaged QR codes
 - [qrcode](https://github.com/soldair/node-qrcode)—MIT-licensed encoder. `vendor/qrcode.js` is that package's browser build, version 1.5.1, checked in so the page does not fetch it from a third party
 
-This project is built based on [best practices documented in node.js-template](https://github.com/fulldecent/node.js-template), release v1.2.2. [build-test.yml](.github/workflows/build-test.yml) packs `qr-radiation.tgz` instead of the template's `simple-rpn-calculator.tgz`. The release workflow is omitted. This repository is not published to npm. `vendor/` is listed in [`.prettierignore`](.prettierignore) because `vendor/qrcode.js` is the checked-in browser build of node-qrcode 1.5.1. `qrcode` is pinned to 1.5.1 so that file stays the same bytes as the installed package.
+This project is built based on [best practices documented in node.js-template](https://github.com/fulldecent/node.js-template), release v1.2.2. [build-test.yml](.github/workflows/build-test.yml) packs `qr-radiation.tgz` instead of the template's `simple-rpn-calculator.tgz`. The release workflow is omitted. This repository is not published to npm. `vendor/` is listed in [`.prettierignore`](.prettierignore) because `vendor/qrcode.js` is the checked-in browser build of node-qrcode 1.5.1. `qrcode` is pinned to 1.5.1 so that file stays the same bytes as the installed package. Run the optimizer with `yarn node` because Yarn Plug'n'Play has no `node_modules` directory. Attestation runs only when the head repository is this repository, so a fork pull request can still upload the packed tarball.
