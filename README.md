@@ -6,7 +6,7 @@ The same search runs in the browser at <https://fulldecent.github.io/qr-radiatio
 
 ## Testing
 
-Node.js 20 or newer.
+Node.js 24. The version is in [`.node-version`](.node-version).
 
 ```sh
 yarn install
@@ -15,17 +15,18 @@ yarn test
 
 ## Examples
 
-By running this program with various target PNG images, it created the below QR codes. Each one points to https://phor.net website, try it.
+By running this program with various target PNG images, it created the below QR codes. Each one points to <https://phor.net> website, try it.
 
 | ![target-black](Documentation/target-black.png) | ![target-white](Documentation/target-white.png) | ![target-gradient](Documentation/target-gradient.png) | ![target-checker](Documentation/target-checker.png) | ![target-will](Documentation/target-will.png) |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| <img src="Documentation/best-black.png" alt="best-black"/> | ![best-white](Documentation/best-white.png) | ![best-gradient](Documentation/best-gradient.png) | ![best-checker](Documentation/best-checker.png) | ![best-will](Documentation/best-will.png) |
+| ![best-black](Documentation/best-black.png) | ![best-white](Documentation/best-white.png) | ![best-gradient](Documentation/best-gradient.png) | ![best-checker](Documentation/best-checker.png) | ![best-will](Documentation/best-will.png) |
 
 ## Installation
 
-1. Install Node.js 20 or newer
+1. Install Node.js 24. The version is in [`.node-version`](.node-version).
 
 2. Install dependencies:
+
    ```sh
    yarn install
    ```
@@ -41,13 +42,14 @@ By running this program with various target PNG images, it created the below QR 
 4. Save a PNG image to **target.png** that is the correct size in pixels as per your QR version.
 
 5. Run the command
+
    ```sh
-   node index.mjs
+   yarn node index.mjs
    ```
 
 Now you will see various improvements to `suffix` spit out on the console along with a loss function that goes down. This loss function compares **target.png** versus the proposed URL.
 
-Stop any time, killing the command with <kbd>CTRL</kbd>-<kbd>C</kbd>. The output file **best.png** shows the QR code for the best URL.
+Stop any time, killing the command with Control-C. The output file **best.png** shows the QR code for the best URL.
 
 To resume progress, take the last suffix from your terminal output and paste it back into your **config.json** under `suffix`.
 
@@ -64,3 +66,5 @@ Please do not create issues, I am not interested in maintaining this. But if you
 - [QR Decode](http://qrlogo.kaarposoft.dk/qrdecode.html)—Nice QR reader/debugger
 - [QRazyBox](https://merricx.github.io/qrazybox/)—Forensic decoding of damaged QR codes
 - [qrcode](https://github.com/soldair/node-qrcode)—MIT-licensed encoder. `vendor/qrcode.js` is that package's browser build, version 1.5.1, checked in so the page does not fetch it from a third party
+
+This project is built based on [best practices documented in node.js-template](https://github.com/fulldecent/node.js-template), release v1.2.2. [build-test.yml](.github/workflows/build-test.yml) packs `qr-radiation.tgz` instead of the template's `simple-rpn-calculator.tgz`. The release workflow is omitted. This repository is not published to npm. `vendor/` is listed in [`.prettierignore`](.prettierignore) because `vendor/qrcode.js` is the checked-in browser build of node-qrcode 1.5.1. `qrcode` is pinned to 1.5.1 so that file stays the same bytes as the installed package. Run the optimizer with `yarn node` because Yarn Plug'n'Play has no `node_modules` directory. Attestation runs only when the head repository is this repository, so a fork pull request can still upload the packed tarball.

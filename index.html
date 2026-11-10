@@ -1,123 +1,140 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="qr-radiation-app" content="browser">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="qr-radiation-app" content="browser" />
     <title>QR Radiation</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-B/GM4XqrwHnWXNOWMbloTmrYXZg10cakYGmpfsR/bbzQ6JAJI4ihuyADKLnBgrCe" crossorigin="anonymous">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-B/GM4XqrwHnWXNOWMbloTmrYXZg10cakYGmpfsR/bbzQ6JAJI4ihuyADKLnBgrCe"
+      crossorigin="anonymous"
+    />
     <style>
-        .qr-pixel {
-            image-rendering: pixelated;
-            width: min(100%, 20rem);
-            height: auto;
-            background: #fff;
-        }
-        #url, #log {
-            overflow-wrap: anywhere;
-            white-space: pre-wrap;
-        }
-        #log {
-            max-height: 12rem;
-        }
+      .qr-pixel {
+        image-rendering: pixelated;
+        width: min(100%, 20rem);
+        height: auto;
+        background: #fff;
+      }
+      #url,
+      #log {
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+      #log {
+        max-height: 12rem;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container py-4">
-        <div class="row g-4">
-            <div class="col-12 lg:col-6 order-2 lg:order-1">
-                <h1 class="h2">QR Radiation</h1>
-                <p>An optimizer that makes your QR code look like a target graphic by manipulating your URL. The search runs in this browser. Nothing is uploaded.</p>
-                <p>Source and the Node program: <a href="https://github.com/fulldecent/qr-radiation">fulldecent/qr-radiation</a>.</p>
+      <div class="row g-4">
+        <div class="col-12 lg:col-6 order-2 lg:order-1">
+          <h1 class="h2">QR Radiation</h1>
+          <p>
+            An optimizer that makes your QR code look like a target graphic by manipulating your URL. The search runs in
+            this browser. Nothing is uploaded.
+          </p>
+          <p>
+            Source and the Node program:
+            <a href="https://github.com/fulldecent/qr-radiation">fulldecent/qr-radiation</a>.
+          </p>
 
-                <form id="controls">
-                    <div class="form-field mb-3">
-                        <label class="form-label" for="prefix">Prefix</label>
-                        <input class="form-control" id="prefix" name="prefix" autocomplete="off">
-                    </div>
-                    <div class="form-field mb-3">
-                        <label class="form-label" for="suffix">Suffix</label>
-                        <textarea class="form-control" id="suffix" name="suffix" rows="4" autocomplete="off"></textarea>
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-12 sm:col-4">
-                            <div class="form-field">
-                                <label class="form-label" for="version">Version</label>
-                                <input class="form-control" id="version" name="version" type="number" min="1" max="40" step="1">
-                            </div>
-                        </div>
-                        <div class="col-12 sm:col-4">
-                            <div class="form-field">
-                                <label class="form-label" for="error-correction">Error correction</label>
-                                <select class="form-control" id="error-correction" name="error-correction">
-                                    <option>L</option>
-                                    <option>M</option>
-                                    <option>Q</option>
-                                    <option>H</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-12 sm:col-4">
-                            <div class="form-field">
-                                <label class="form-label" for="mask">Mask pattern</label>
-                                <select class="form-control" id="mask" name="mask">
-                                    <option>0</option>
-                                    <option>1</option>
-                                    <option>2</option>
-                                    <option>3</option>
-                                    <option>4</option>
-                                    <option>5</option>
-                                    <option>6</option>
-                                    <option>7</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-field mt-3">
-                        <label class="form-label" for="target">Target image</label>
-                        <input class="form-control" id="target" name="target" type="file" accept="image/png,image/*">
-                    </div>
-                </form>
+          <form id="controls">
+            <div class="form-field mb-3">
+              <label class="form-label" for="prefix">Prefix</label>
+              <input class="form-control" id="prefix" name="prefix" autocomplete="off" />
             </div>
-
-            <div class="col-12 lg:col-6 order-1 lg:order-2">
-                <section class="card">
-                    <div class="card-body">
-                        <h2 class="h4 card-title">Search</h2>
-                        <div class="d-flex flex-wrap gap-2 mb-3">
-                            <button id="start" class="btn-solid theme-primary" type="button">Start</button>
-                            <button id="stop" class="btn-outline theme-secondary" type="button" disabled>Stop</button>
-                        </div>
-                        <p id="status" role="status">Loading.</p>
-                        <p id="requirement" class="form-text"></p>
-                        <img id="target-preview" class="qr-pixel img-thumbnail d-none mb-3" alt="Target graphic">
-                        <div class="row g-3">
-                            <div class="col-12 sm:col-6">
-                                <h3 class="h6">Latest try</h3>
-                                <p>Loss <strong id="attempt-loss">…</strong></p>
-                                <p id="attempt-move" class="form-text"></p>
-                                <canvas id="attempt" class="qr-pixel border" width="41" height="41">Latest QR code</canvas>
-                            </div>
-                            <div class="col-12 sm:col-6">
-                                <h3 class="h6">Best URL</h3>
-                                <p>Loss <strong id="loss">…</strong></p>
-                                <canvas id="qr" class="qr-pixel border" width="41" height="41">Best QR code</canvas>
-                            </div>
-                        </div>
-                        <p id="url" class="font-monospace"></p>
-                        <div class="d-flex flex-wrap gap-2">
-                            <a id="open" class="btn-outline theme-primary" href="">Open URL</a>
-                            <a id="download" class="btn-outline theme-secondary" href="" download="best.png">Download PNG</a>
-                        </div>
-                        <pre id="log" class="border rounded p-2 mt-3 mb-0"></pre>
-                    </div>
-                </section>
+            <div class="form-field mb-3">
+              <label class="form-label" for="suffix">Suffix</label>
+              <textarea class="form-control" id="suffix" name="suffix" rows="4" autocomplete="off"></textarea>
             </div>
+            <div class="row g-3">
+              <div class="col-12 sm:col-4">
+                <div class="form-field">
+                  <label class="form-label" for="version">Version</label>
+                  <input class="form-control" id="version" name="version" type="number" min="1" max="40" step="1" />
+                </div>
+              </div>
+              <div class="col-12 sm:col-4">
+                <div class="form-field">
+                  <label class="form-label" for="error-correction">Error correction</label>
+                  <select class="form-control" id="error-correction" name="error-correction">
+                    <option>L</option>
+                    <option>M</option>
+                    <option>Q</option>
+                    <option>H</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-12 sm:col-4">
+                <div class="form-field">
+                  <label class="form-label" for="mask">Mask pattern</label>
+                  <select class="form-control" id="mask" name="mask">
+                    <option>0</option>
+                    <option>1</option>
+                    <option>2</option>
+                    <option>3</option>
+                    <option>4</option>
+                    <option>5</option>
+                    <option>6</option>
+                    <option>7</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="form-field mt-3">
+              <label class="form-label" for="target">Target image</label>
+              <input class="form-control" id="target" name="target" type="file" accept="image/png,image/*" />
+            </div>
+          </form>
         </div>
+
+        <div class="col-12 lg:col-6 order-1 lg:order-2">
+          <section class="card">
+            <div class="card-body">
+              <h2 class="h4 card-title">Search</h2>
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <button id="start" class="btn-solid theme-primary" type="button">Start</button>
+                <button id="stop" class="btn-outline theme-secondary" type="button" disabled>Stop</button>
+              </div>
+              <p id="status" role="status">Loading.</p>
+              <p id="requirement" class="form-text"></p>
+              <img id="target-preview" class="qr-pixel img-thumbnail d-none mb-3" alt="Target graphic" />
+              <div class="row g-3">
+                <div class="col-12 sm:col-6">
+                  <h3 class="h6">Latest try</h3>
+                  <p>Loss <strong id="attempt-loss">…</strong></p>
+                  <p id="attempt-move" class="form-text"></p>
+                  <canvas id="attempt" class="qr-pixel border" width="41" height="41">Latest QR code</canvas>
+                </div>
+                <div class="col-12 sm:col-6">
+                  <h3 class="h6">Best URL</h3>
+                  <p>Loss <strong id="loss">…</strong></p>
+                  <canvas id="qr" class="qr-pixel border" width="41" height="41">Best QR code</canvas>
+                </div>
+              </div>
+              <p id="url" class="font-monospace"></p>
+              <div class="d-flex flex-wrap gap-2">
+                <a id="open" class="btn-outline theme-primary" href="">Open URL</a>
+                <a id="download" class="btn-outline theme-secondary" href="" download="best.png">Download PNG</a>
+              </div>
+              <pre id="log" class="border rounded p-2 mt-3 mb-0"></pre>
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
     <noscript>This page needs JavaScript to build the QR code.</noscript>
     <script src="vendor/qrcode.js"></script>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-1a/pXj49ZQ1aHEmrJ+gMw1otqoVsYwlEnlD8mIfY2TV03r20Y0CN7uqx1tQogjPL" crossorigin="anonymous"></script>
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-1a/pXj49ZQ1aHEmrJ+gMw1otqoVsYwlEnlD8mIfY2TV03r20Y0CN7uqx1tQogjPL"
+      crossorigin="anonymous"
+    ></script>
     <script type="module" src="app.js"></script>
-</body>
+  </body>
 </html>
